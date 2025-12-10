@@ -12,13 +12,12 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.setApplicationDescription("CAD file converter");
 
-    // Обязательные опции
-    QCommandLineOption inputOption("i", "Input file", "file");
-    QCommandLineOption outputOption("o", "Output file", "file");
 
+    QCommandLineOption inputOption(QStringList() << "i" << "input", "Input file", "file");
+    QCommandLineOption outputOption(QStringList() << "o" << "output", "Output file", "file");
 
-    QCommandLineOption linearOption("l", "Linear precision", "value", "0.1");
-    QCommandLineOption angularOption("a", "Angular precision", "value", "0.3");
+    QCommandLineOption linearOption(QStringList() << "l" << "linear", "Linear precision", "value", "0.1");
+    QCommandLineOption angularOption(QStringList() << "a" << "angular", "Angular precision", "value", "0.3");
 
     parser.addOption(inputOption);
     parser.addOption(outputOption);
