@@ -2,22 +2,21 @@
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QFileInfo>
-
+#include <QStringList>
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     app.setApplicationName("converter");
-    app.setApplicationVersion("1.1");
+    app.setApplicationVersion("1.2");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("CAD file converter. Supports both flags and positional arguments.");
+    parser.setApplicationDescription("CAD file converter");
     parser.addHelpOption();
     parser.addVersionOption();
 
-    // 1. Описываем именованные ключи (Опции)
-    QCommandLineOption inputOption({"i", "input"}, "Input STEP file", "file");
-    QCommandLineOption outputOption({"o", "output"}, "Output OBJ file", "file");
+    QCommandLineOption inputOption({"i", "input"}, "Input file (stp, obj, edc)", "file");
+    QCommandLineOption outputOption({"o", "output"}, "Output file (stp, obj, edc)", "file");
     QCommandLineOption linearOption({"l", "linear"}, "Linear precision", "value", "0.1");
     QCommandLineOption angularOption({"a", "angular"}, "Angular precision", "value", "0.3");
 
@@ -26,9 +25,8 @@ int main(int argc, char *argv[])
     parser.addOption(linearOption);
     parser.addOption(angularOption);
 
-    // 2. Описываем позиционные аргументы (для справки)
-    parser.addPositionalArgument("input", "Input STEP file");
-    parser.addPositionalArgument("output", "Output OBJ file");
+    parser.addPositionalArgument("input", "Input file");
+    parser.addPositionalArgument("output", "Output file");
     parser.addPositionalArgument("linear", "Linear precision [default: 0.1]");
     parser.addPositionalArgument("angular", "Angular precision [default: 0.3]");
 
@@ -36,58 +34,49 @@ int main(int argc, char *argv[])
 
     const QStringList posArgs = parser.positionalArguments();
 
-    // Входной файл
-    QString inputFile = parser.value(inputOption);
-    if (inputFile.isEmpty() && posArgs.size() > 0) {
-        inputFile = posArgs.at(0);
-    }
+    QString inputPath = parser.value(inputOption);
+    if (inputPath.isEmpty() && posArgs.size() > 0) inputPath = posArgs.at(0);
 
-    // Выходной файл
-    QString outputFile = parser.value(outputOption);
-    if (outputFile.isEmpty() && posArgs.size() > 1) {
-        outputFile = posArgs.at(1);
-    }
+    QString outputPath = parser.value(outputOption);
+    if (outputPath.isEmpty() && posArgs.size() > 1) outputPath = posArgs.at(1);
 
-    // Линейная точность
-    double linearPrecision;
-    if (parser.isSet(linearOption)) {
-        linearPrecision = parser.value(linearOption).toDouble();
-    } else if (posArgs.size() > 2) {
-        linearPrecision = posArgs.at(2).toDouble();
-    } else {
-        linearPrecision = 0.1;
-    }
-
-    // Угловая точность
-    double angularPrecision;
-    if (parser.isSet(angularOption)) {
-        angularPrecision = parser.value(angularOption).toDouble();
-    } else if (posArgs.size() > 3) {
-        angularPrecision = posArgs.at(3).toDouble();
-    } else {
-        angularPrecision = 0.3;
-    }
-
-
-    if (inputFile.isEmpty() || outputFile.isEmpty()) {
+    if (inputPath.isEmpty() || outputPath.isEmpty()) {
         qCritical() << "Error: Input and output files are required!";
         parser.showHelp(1);
     }
 
-    if (!QFileInfo::exists(inputFile)) {
-        qCritical() << "Error: File" << inputFile << "not found.";
+    QFileInfo inputInfo(inputPath);
+    QFileInfo outputInfo(outputPath);
+
+    QString inputExt = inputInfo.suffix().toLower();
+    QString outputExt = outputInfo.suffix().toLower();
+
+    QStringList allowedFormats = {"stp", "obj", "edc"};
+
+    if (!allowedFormats.contains(inputExt) || !allowedFormats.contains(outputExt)) {
+        qCritical() << "Error: Unsupported format!";
+        qCritical() << "Allowed formats: stp, obj, edc";
         return 1;
     }
 
-    // Вывод итоговых параметров для контроля
-    qInfo().noquote() << "Status: Starting conversion...";
-    qInfo().noquote() << "Input:  " << inputFile;
-    qInfo().noquote() << "Output: " << outputFile;
-    qInfo().noquote() << "Linear: " << linearPrecision;
-    qInfo().noquote() << "Angular:" << angularPrecision;
+    double linearPrecision = parser.isSet(linearOption) ? parser.value(linearOption).toDouble()
+                                                        : (posArgs.size() > 2 ? posArgs.at(2).toDouble() : 0.1);
 
-    // TODO: Вызов вашего конвертера
-    // convert(inputFile, outputFile, linearPrecision, angularPrecision);
+    double angularPrecision = parser.isSet(angularOption) ? parser.value(angularOption).toDouble()
+                                                          : (posArgs.size() > 3 ? posArgs.at(3).toDouble() : 0.3);
+
+    if (!inputInfo.exists()) {
+        qCritical() << "Error: File" << inputPath << "not found.";
+        return 1;
+    }
+
+    qInfo().noquote() << QString("Converting from %1 to %2").arg(inputExt.toUpper(), outputExt.toUpper());
+
+    qInfo().noquote() << "Details:";
+    qInfo().noquote() << "  Path: " << inputPath << "->" << outputPath;
+    qInfo().noquote() << "  Params: Linear=" << linearPrecision << ", Angular=" << angularPrecision;
+
+    // TODO: Здесь будет вызов реального конвертера
 
     qInfo() << "Success: Done.";
     return 0;
